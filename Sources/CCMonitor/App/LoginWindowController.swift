@@ -52,6 +52,12 @@ final class LoginWindowController: NSWindowController, WKHTTPCookieStoreObserver
         fatalError("init(coder:) has not been implemented")
     }
 
+    deinit {
+        if hasRegisteredObserver {
+            webView.configuration.websiteDataStore.httpCookieStore.remove(self)
+        }
+    }
+
     /// Show the login window and begin loading claude.ai
     func showAndLoad() {
         guard let window = window else { return }
@@ -77,7 +83,9 @@ final class LoginWindowController: NSWindowController, WKHTTPCookieStoreObserver
 
     func cookiesDidChange(in cookieStore: WKHTTPCookieStore) {
         cookieStore.getAllCookies { [weak self] cookies in
-            self?.processedCookies(cookies)
+            DispatchQueue.main.async {
+                self?.processedCookies(cookies)
+            }
         }
     }
 
@@ -101,6 +109,7 @@ final class LoginWindowController: NSWindowController, WKHTTPCookieStoreObserver
             try KeychainStore().save(key)
         } catch {
             NSLog("Failed to save session key to Keychain: \(error)")
+            return
         }
 
         // Post notification
