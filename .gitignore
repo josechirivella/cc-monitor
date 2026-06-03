@@ -1,0 +1,5 @@
+.DS_Store
+.build/
+CCMonitor.app/
+docs/
+CLAUDE.md
