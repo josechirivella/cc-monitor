@@ -16,7 +16,7 @@ struct SetupView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             Button(action: {
-                NotificationCenter.default.post(name: NSNotification.Name("showLogin"), object: nil)
+                NotificationCenter.default.post(name: .showLogin, object: nil)
             }) {
                 HStack(spacing: 6) {
                     Image(systemName: "globe")
@@ -28,6 +28,8 @@ struct SetupView: View {
                 .foregroundStyle(.white)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Sign in to Claude")
+            .accessibilityIdentifier("setupSignInButton")
 
             Text("Your session key is stored securely in Keychain.")
                 .font(.system(.caption2, design: .rounded))
