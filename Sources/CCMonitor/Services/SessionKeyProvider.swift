@@ -17,11 +17,24 @@ struct SessionKeyProvider {
     }
 
     func sessionKey() throws -> String {
+        // Step 0: Keychain
+        do {
+            let key = try KeychainStore().load()
+            return key
+        } catch KeychainStore.KeychainError.itemNotFound {
+            // Continue to next step.
+        } catch {
+            // Log but continue to file/env fallback.
+            print("Keychain lookup failed: \(error)")
+        }
+
+        // Step 1: Environment variable
         if let env = ProcessInfo.processInfo.environment["CCMONITOR_SESSION_KEY"],
            let key = Self.extract(from: env) {
             return key
         }
 
+        // Step 2: File paths
         let home = FileManager.default.homeDirectoryForCurrentUser
         let candidates = [
             home.appending(path: ".config/ccmonitor/session_key"),
