@@ -60,32 +60,6 @@ That's it — no DevTools, no manual copying. If your session later expires (a `
 > same account, just a different way in. After signing in once this way, CCMonitor
 > has your session key and you won't need to repeat it until it expires.
 
-### Manual setup (alternative)
-
-If you prefer not to use the sign-in window, you can supply the key yourself:
-
-1. Open [claude.ai](https://claude.ai) in your browser, signed in.
-2. Open DevTools → **Application** → **Cookies** → `https://claude.ai`.
-3. Copy the value of the **`sessionKey`** cookie (it starts with `sk-ant-`).
-4. Save it to one of the following locations:
-
-   ```bash
-   echo 'sk-ant-...' > ~/.claude/.ccmonitor-session-key
-   ```
-
-5. Relaunch CCMonitor (or wait for the next refresh).
-
-### Session key lookup order
-
-CCMonitor checks these sources in order and uses the first one found:
-
-1. The macOS **Keychain** (populated by the in-app sign-in window)
-2. The `CCMONITOR_SESSION_KEY` environment variable
-3. `~/.config/ccmonitor/session_key`
-4. `~/.claude/.ccmonitor-session-key`
-
-Each file/env source may contain the raw `sk-ant-…` value, a `sessionKey=…` line, or a full `Cookie` header — CCMonitor extracts the key either way.
-
 > **Note:** Your session key is a credential. It stays on your machine, is read only to call the usage API, and is never logged or transmitted anywhere else.
 
 ## How it works
