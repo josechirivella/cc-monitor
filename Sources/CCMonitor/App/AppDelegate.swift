@@ -19,7 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil,
             queue: .main
         ) { _ in
-            LoginWindowController.shared.showWindow(nil)
+            LoginWindowController.shared.showAndLoad()
         }
 
         authExpiredObserver = nc.addObserver(
@@ -27,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil,
             queue: .main
         ) { _ in
-            LoginWindowController.shared.showWindow(nil)
+            LoginWindowController.shared.showAndLoad()
         }
     }
 
