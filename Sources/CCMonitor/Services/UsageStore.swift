@@ -29,6 +29,15 @@ final class UsageStore {
 
     func start() {
         guard refreshTask == nil else { return }
+
+        // Observe key updates and trigger immediate refresh.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(sessionKeyUpdated),
+            name: .sessionKeyUpdated,
+            object: nil
+        )
+
         refreshTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.refresh()
@@ -38,8 +47,16 @@ final class UsageStore {
     }
 
     func stop() {
+        NotificationCenter.default.removeObserver(self, name: .sessionKeyUpdated, object: nil)
         refreshTask?.cancel()
         refreshTask = nil
+    }
+
+    @objc
+    private func sessionKeyUpdated() {
+        Task {
+            await refresh()
+        }
     }
 
     private func refresh() async {
@@ -59,6 +76,9 @@ final class UsageStore {
             apiError = "Setup required"
         } catch let err as ClaudeAPIError {
             apiError = err.errorDescription
+            if case .authenticationFailed = err {
+                NotificationCenter.default.post(name: .authExpired, object: nil)
+            }
         } catch {
             apiError = error.localizedDescription
         }
