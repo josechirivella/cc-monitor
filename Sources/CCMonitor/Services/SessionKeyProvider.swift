@@ -2,9 +2,10 @@ import Foundation
 
 /// Locates the user's claude.ai sessionKey cookie.
 /// Lookup order:
-///   1. `CCMONITOR_SESSION_KEY` environment variable
-///   2. `~/.config/ccmonitor/session_key` file
-///   3. `~/.claude/.ccmonitor-session-key` file
+///   1. Keychain via `KeychainStore().load()`
+///   2. `CCMONITOR_SESSION_KEY` environment variable
+///   3. `~/.config/ccmonitor/session_key` file
+///   4. `~/.claude/.ccmonitor-session-key` file
 /// File contents may be the raw value, a `sessionKey=...` line, or a full Cookie header.
 struct SessionKeyProvider {
 
