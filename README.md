@@ -12,6 +12,7 @@ CCMonitor lives in your menu bar as a `⚡ 42%` indicator. Click it for a slick 
 - **Sonnet weekly sub-limit** surfaced when present (Max plans).
 - **Token breakdown** (input / output / cache) for the current session, parsed from local Claude Code logs.
 - **Today / All Time** token totals.
+- **One-click sign-in** — authenticate through a built-in claude.ai window; your session key is captured automatically and stored in the macOS Keychain.
 - Lightweight SwiftUI `MenuBarExtra` app — no Dock icon, no window clutter.
 
 ## Requirements
@@ -43,6 +44,26 @@ make run   # swift run (no .app bundle; the Dock icon may flash briefly)
 
 CCMonitor reads your usage from the authoritative claude.ai API, which requires your `sessionKey` cookie. On first launch the popover shows a setup screen until a key is provided.
 
+### Sign in (recommended)
+
+1. Open the popover and click **Sign in to Claude**.
+2. A built-in window loads [claude.ai](https://claude.ai). Sign in as you normally would.
+3. Once you're signed in, CCMonitor captures the `sessionKey` cookie automatically, stores it securely in your macOS **Keychain**, and closes the window.
+
+That's it — no DevTools, no manual copying. If your session later expires (a `401` from the API), CCMonitor reopens the sign-in window so you can re-authenticate.
+
+> **Use email login — even if you normally sign in with Google.**
+> The sign-in window is an embedded web view, and Google's OAuth policy blocks
+> sign-in from embedded web views (you'll get a generic error). Click
+> **"Continue with email"** and sign in with your email address instead. This
+> works even for accounts that were originally created via Google SSO — it's the
+> same account, just a different way in. After signing in once this way, CCMonitor
+> has your session key and you won't need to repeat it until it expires.
+
+### Manual setup (alternative)
+
+If you prefer not to use the sign-in window, you can supply the key yourself:
+
 1. Open [claude.ai](https://claude.ai) in your browser, signed in.
 2. Open DevTools → **Application** → **Cookies** → `https://claude.ai`.
 3. Copy the value of the **`sessionKey`** cookie (it starts with `sk-ant-`).
@@ -58,11 +79,12 @@ CCMonitor reads your usage from the authoritative claude.ai API, which requires 
 
 CCMonitor checks these sources in order and uses the first one found:
 
-1. The `CCMONITOR_SESSION_KEY` environment variable
-2. `~/.config/ccmonitor/session_key`
-3. `~/.claude/.ccmonitor-session-key`
+1. The macOS **Keychain** (populated by the in-app sign-in window)
+2. The `CCMONITOR_SESSION_KEY` environment variable
+3. `~/.config/ccmonitor/session_key`
+4. `~/.claude/.ccmonitor-session-key`
 
-Each source may contain the raw `sk-ant-…` value, a `sessionKey=…` line, or a full `Cookie` header — CCMonitor extracts the key either way.
+Each file/env source may contain the raw `sk-ant-…` value, a `sessionKey=…` line, or a full `Cookie` header — CCMonitor extracts the key either way.
 
 > **Note:** Your session key is a credential. It stays on your machine, is read only to call the usage API, and is never logged or transmitted anywhere else.
 
@@ -75,9 +97,9 @@ Each source may contain the raw `sk-ant-…` value, a `sessionKey=…` line, or 
 
 ```
 Sources/CCMonitor/
-├── App/         # App entry point, menu bar label, app delegate
+├── App/         # App entry point, menu bar label, app delegate, sign-in window
 ├── Models/      # API wire types, JSONL records, pricing, aggregation
-├── Services/    # claude.ai API client, session key lookup, log parsing, observable store
+├── Services/    # claude.ai API client, session key lookup, Keychain, log parsing, observable store
 └── Views/       # Menu bar popover, session/week cards, setup screen
 ```
 

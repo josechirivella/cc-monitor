@@ -17,6 +17,12 @@ final class LoginWindowController: NSWindowController, WKHTTPCookieStoreObserver
 
         let tempWebView = WKWebView(frame: .zero, configuration: config)
         tempWebView.translatesAutoresizingMaskIntoConstraints = false
+        // Present a real Safari user agent. The default WKWebView UA is treated as
+        // an embedded/non-browser client by claude.ai's auth backend and rejected
+        // with a generic "There was an error logging you in" message.
+        tempWebView.customUserAgent =
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
+            "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15"
         webView = tempWebView
 
         // Create the window
