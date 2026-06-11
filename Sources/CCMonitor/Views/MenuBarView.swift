@@ -81,6 +81,16 @@ struct MenuBarView: View {
 
             Spacer()
 
+            if !store.needsSetup {
+                Button("Sign Out") {
+                    store.logout()
+                }
+                .buttonStyle(.plain)
+                .font(.system(.caption, design: .rounded))
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Sign out of Claude")
+            }
+
             Button("Quit") {
                 NSApplication.shared.terminate(nil)
             }
