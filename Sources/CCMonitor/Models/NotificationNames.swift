@@ -12,4 +12,8 @@ extension Notification.Name {
     /// Posted when a valid sessionKey is captured and stored.
     /// Indicates that authentication succeeded and the session is ready for use.
     static let sessionKeyUpdated = Notification.Name("sessionKeyUpdated")
+
+    /// Posted after the user signs out: the session key has been deleted from
+    /// the Keychain and local state reset. Observers clear claude.ai web data.
+    static let didLogout = Notification.Name("didLogout")
 }
