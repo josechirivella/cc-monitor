@@ -55,6 +55,9 @@ final class UsageStore {
     /// Sign out: delete the stored session key, reset auth-related state so the
     /// UI returns to the setup view immediately, and post `.didLogout` so the
     /// login WebView clears its claude.ai data.
+    ///
+    /// User-managed fallbacks (CCMONITOR_SESSION_KEY env var, config files) are
+    /// intentionally untouched; if present, the next refresh re-authenticates.
     func logout() {
         do {
             try KeychainStore().delete()
@@ -65,6 +68,7 @@ final class UsageStore {
         }
 
         needsSetup = true
+        lastError = nil
         if let current = stats {
             stats = AggregatedStats(
                 currentSession: current.currentSession,
