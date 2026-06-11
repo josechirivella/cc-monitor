@@ -52,6 +52,39 @@ final class UsageStore {
         refreshTask = nil
     }
 
+    /// Sign out: delete the stored session key, reset auth-related state so the
+    /// UI returns to the setup view immediately, and post `.didLogout` so the
+    /// login WebView clears its claude.ai data.
+    ///
+    /// User-managed fallbacks (CCMONITOR_SESSION_KEY env var, config files) are
+    /// intentionally untouched; if present, the next refresh re-authenticates.
+    func logout() {
+        do {
+            try KeychainStore().delete()
+        } catch {
+            // Continue anyway — local state is still reset to honor the user's
+            // intent, and the next refresh re-detects whatever key remains.
+            NSLog("Failed to delete session key from Keychain: \(error)")
+        }
+
+        needsSetup = true
+        lastError = nil
+        if let current = stats {
+            stats = AggregatedStats(
+                currentSession: current.currentSession,
+                today: current.today,
+                thisWeek: current.thisWeek,
+                allTime: current.allTime,
+                lastUpdated: current.lastUpdated,
+                truncatedFilesCount: current.truncatedFilesCount,
+                apiUsage: nil,
+                apiError: nil
+            )
+        }
+
+        NotificationCenter.default.post(name: .didLogout, object: nil)
+    }
+
     @objc
     private func sessionKeyUpdated() {
         Task {

@@ -10,6 +10,10 @@ final class LoginWindowController: NSWindowController, WKHTTPCookieStoreObserver
     private let webView: WKWebView
     private var hasRegisteredObserver = false
 
+    /// Set by clearSession() so the next showAndLoad() reloads claude.ai
+    /// instead of showing the previous (logged-out) page.
+    private var needsFreshLoad = false
+
     private init() {
         // Create the web view with persistent data store
         let config = WKWebViewConfiguration()
@@ -74,15 +78,31 @@ final class LoginWindowController: NSWindowController, WKHTTPCookieStoreObserver
             hasRegisteredObserver = true
         }
 
-        // Load claude.ai if we haven't already
-        if webView.url == nil {
+        // Load claude.ai on first show, or reload after a logout cleared the session.
+        if webView.url == nil || needsFreshLoad {
             if let url = URL(string: "https://claude.ai") {
                 webView.load(URLRequest(url: url))
+                needsFreshLoad = false
             }
         }
 
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// Remove claude.ai website data (cookies, local/session storage) so the
+    /// next sign-in shows a fresh login form instead of re-capturing the old
+    /// session cookie.
+    func clearSession() {
+        needsFreshLoad = true
+
+        let dataStore = webView.configuration.websiteDataStore
+        let types = WKWebsiteDataStore.allWebsiteDataTypes()
+        dataStore.fetchDataRecords(ofTypes: types) { records in
+            let claudeRecords = records.filter { $0.displayName.contains("claude.ai") }
+            guard !claudeRecords.isEmpty else { return }
+            dataStore.removeData(ofTypes: types, for: claudeRecords) {}
+        }
     }
 
     // MARK: - WKHTTPCookieStoreObserver

@@ -5,6 +5,7 @@ import AppKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var loginObserver: NSObjectProtocol?
     private var authExpiredObserver: NSObjectProtocol?
+    private var logoutObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Programmatic fallback for dev runs (swift run without .app bundle).
@@ -29,6 +30,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { _ in
             LoginWindowController.shared.showAndLoad()
         }
+
+        logoutObserver = nc.addObserver(
+            forName: .didLogout,
+            object: nil,
+            queue: .main
+        ) { _ in
+            LoginWindowController.shared.clearSession()
+        }
     }
 
     deinit {
@@ -36,6 +45,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NotificationCenter.default.removeObserver(observer)
         }
         if let observer = authExpiredObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = logoutObserver {
             NotificationCenter.default.removeObserver(observer)
         }
     }
