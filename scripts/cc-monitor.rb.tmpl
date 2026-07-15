@@ -1,0 +1,13 @@
+cask "cc-monitor" do
+  version "{{VERSION}}"
+  sha256 "{{SHA256}}"
+
+  url "https://github.com/{{REPOSITORY}}/releases/download/v#{version}/CCMonitor-v#{version}-macos-universal.zip"
+  name "CCMonitor"
+  desc "Claude Code usage monitor"
+  homepage "https://github.com/{{REPOSITORY}}"
+
+  depends_on macos: ">= :sonoma"
+
+  app "CCMonitor.app"
+end

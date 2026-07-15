@@ -18,10 +18,28 @@ CCMonitor lives in your menu bar as a `⚡ 42%` indicator. Click it for a slick 
 ## Requirements
 
 - macOS 14 (Sonoma) or later
-- Swift 5.9+ toolchain (Xcode 15+ or Swift command-line tools)
 - An active Claude subscription signed in at [claude.ai](https://claude.ai)
 
-## Build & Run
+## Install
+
+### Homebrew
+
+Once the `runyan-co/homebrew-tap` repository is published, install the signed release with:
+
+```bash
+brew tap runyan-co/tap
+brew install --cask cc-monitor
+```
+
+Upgrade with `brew upgrade --cask cc-monitor` and remove it with `brew uninstall --cask cc-monitor`.
+
+### GitHub Release
+
+Download `CCMonitor-vX.Y.Z-macos-universal.zip` from the [releases page](https://github.com/runyan-co/cc-monitor/releases), extract it, and move `CCMonitor.app` to `/Applications`.
+
+## Build From Source
+
+Building from source requires a Swift 5.9+ toolchain (Xcode 15+ or Swift command-line tools).
 
 ```bash
 # Build a release binary and wrap it in CCMonitor.app
@@ -39,6 +57,14 @@ For quick development iteration:
 ```bash
 make run   # swift run (no .app bundle; the Dock icon may flash briefly)
 ```
+
+To produce a universal local release archive, provide a semantic version and integer build number:
+
+```bash
+make release-archive VERSION=1.0.1 BUILD_NUMBER=2
+```
+
+The archive is written to `dist/CCMonitor-v1.0.1-macos-universal.zip`.
 
 ## Setup
 
@@ -76,6 +102,23 @@ Sources/CCMonitor/
 ├── Services/    # claude.ai API client, session key lookup, Keychain, log parsing, observable store
 └── Views/       # Menu bar popover, session/week cards, setup screen
 ```
+
+## Releases
+
+Every push to `main` creates the next patch release. The release workflow builds a universal macOS application, signs it with a Developer ID certificate, notarizes and staples it, creates a `vX.Y.Z` tag, and publishes the ZIP to GitHub Releases. GitHub also provides source archives for each tag.
+
+Release versions come from tags. The first automated release after the current `1.0.0` baseline is `v1.0.1`; each subsequent merge increments the patch version.
+
+Repository maintainers must configure these GitHub Actions secrets before merging the release workflow:
+
+- `APPLE_CERTIFICATE_P12`: Base64-encoded Developer ID Application certificate (`.p12`).
+- `APPLE_CERTIFICATE_PASSWORD`: Password for that certificate.
+- `APPLE_SIGNING_IDENTITY`: Full Developer ID Application signing identity.
+- `APPLE_NOTARY_KEY`: App Store Connect API private key (`.p8`).
+- `APPLE_NOTARY_KEY_ID`: App Store Connect API key ID.
+- `APPLE_NOTARY_ISSUER_ID`: App Store Connect issuer ID.
+
+Homebrew publication is enabled after `runyan-co/homebrew-tap` exists and `HOMEBREW_TAP_TOKEN` is added to this repository. The token needs write access to that tap. Each release then updates `Casks/cc-monitor.rb` in the tap with the release version and SHA-256.
 
 ## License
 

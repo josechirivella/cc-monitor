@@ -1,0 +1,146 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+env:
+  APP_NAME: CCMonitor
+  HOMEBREW_TAP_REPOSITORY: runyan-co/homebrew-tap
+  HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+jobs:
+  release:
+    runs-on: macos-14
+
+    steps:
+      - name: Check out release commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate release version
+        id: version
+        run: |
+          version="$(scripts/next-version.sh "$GITHUB_SHA")"
+          build_number="$(git rev-list --count "$GITHUB_SHA")"
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+          printf 'tag=v%s\n' "$version" >> "$GITHUB_OUTPUT"
+          printf 'build_number=%s\n' "$build_number" >> "$GITHUB_OUTPUT"
+
+      - name: Import Developer ID certificate
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+      - name: Build universal application
+        run: |
+          make build-universal \
+            BUNDLE="dist/$APP_NAME.app" \
+            VERSION="${{ steps.version.outputs.version }}" \
+            BUILD_NUMBER="${{ steps.version.outputs.build_number }}"
+
+      - name: Sign application
+        run: |
+          make sign \
+            BUNDLE="dist/$APP_NAME.app" \
+            SIGNING_IDENTITY="${{ secrets.APPLE_SIGNING_IDENTITY }}"
+
+      - name: Archive signed application for notarization
+        run: |
+          make archive \
+            BUNDLE="dist/$APP_NAME.app" \
+            VERSION="${{ steps.version.outputs.version }}"
+
+      - name: Notarize application
+        env:
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+          APPLE_NOTARY_KEY: ${{ secrets.APPLE_NOTARY_KEY }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          ARCHIVE: dist/CCMonitor-v${{ steps.version.outputs.version }}-macos-universal.zip
+        run: |
+          key_path="$RUNNER_TEMP/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
+          trap 'rm -f "$key_path"' EXIT
+          printf '%s' "$APPLE_NOTARY_KEY" > "$key_path"
+          chmod 600 "$key_path"
+          xcrun notarytool submit "$ARCHIVE" \
+            --key "$key_path" \
+            --key-id "$APPLE_NOTARY_KEY_ID" \
+            --issuer "$APPLE_NOTARY_ISSUER_ID" \
+            --wait
+          xcrun stapler staple "dist/$APP_NAME.app"
+
+      - name: Create final notarized archive
+        run: |
+          make archive \
+            BUNDLE="dist/$APP_NAME.app" \
+            VERSION="${{ steps.version.outputs.version }}"
+
+      - name: Validate release artifact
+        run: |
+          make validate-release \
+            BUNDLE="dist/$APP_NAME.app" \
+            VERSION="${{ steps.version.outputs.version }}" \
+            BUILD_NUMBER="${{ steps.version.outputs.build_number }}"
+          make verify-signature BUNDLE="dist/$APP_NAME.app"
+
+      - name: Create or reuse release tag
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if git rev-parse --verify --quiet "refs/tags/$TAG"; then
+            tag_commit="$(git rev-list -n 1 "$TAG")"
+            test "$tag_commit" = "$GITHUB_SHA"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag --annotate "$TAG" --message "Release $TAG" "$GITHUB_SHA"
+            git push origin "$TAG"
+          fi
+
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARCHIVE: dist/CCMonitor-v${{ steps.version.outputs.version }}-macos-universal.zip
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ARCHIVE" --clobber
+          else
+            gh release create "$TAG" "$ARCHIVE" --generate-notes --title "$TAG"
+          fi
+
+      - name: Update Homebrew cask
+        if: ${{ github.repository == 'runyan-co/cc-monitor' && env.HOMEBREW_TAP_TOKEN != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          ARCHIVE: dist/CCMonitor-v${{ steps.version.outputs.version }}-macos-universal.zip
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          tap_path="$RUNNER_TEMP/homebrew-tap"
+          gh repo clone "$HOMEBREW_TAP_REPOSITORY" "$tap_path"
+          git -C "$tap_path" pull --rebase origin main
+          mkdir -p "$tap_path/Casks"
+          scripts/render-cask.sh \
+            "$VERSION" \
+            "$(shasum -a 256 "$ARCHIVE" | cut -d ' ' -f 1)" \
+            "$GITHUB_REPOSITORY" \
+            "$tap_path/Casks/cc-monitor.rb"
+          if git -C "$tap_path" diff --quiet; then
+            exit 0
+          fi
+          git -C "$tap_path" config user.name "github-actions[bot]"
+          git -C "$tap_path" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$tap_path" add Casks/cc-monitor.rb
+          git -C "$tap_path" commit --message "Update cc-monitor to $VERSION"
+          git -C "$tap_path" push origin main
