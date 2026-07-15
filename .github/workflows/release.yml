@@ -1,47 +1,76 @@
 name: Release
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: release-main
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  verify:
+    if: github.event_name == 'pull_request'
+    runs-on: macos-26
+
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v5
+
+      - name: Build and validate universal release archive
+        run: |
+          make release-archive \
+            BUNDLE="dist/CCMonitor.app" \
+            VERSION="0.0.0" \
+            BUILD_NUMBER="0"
+          make validate-release \
+            BUNDLE="dist/CCMonitor.app" \
+            VERSION="0.0.0" \
+            BUILD_NUMBER="0"
+
   release:
-    runs-on: macos-14
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: macos-26
+    permissions:
+      contents: write
 
     steps:
       - name: Check out release commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          fetch-tags: true
 
-      - name: Set release version
+      - name: Calculate release version
         id: version
         run: |
-          version="1.0.${GITHUB_RUN_NUMBER}"
+          version="$(scripts/next-version.sh "$GITHUB_SHA")"
+          build_number="$(git rev-list --count "$GITHUB_SHA")"
           printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
           printf 'tag=v%s\n' "$version" >> "$GITHUB_OUTPUT"
+          printf 'build_number=%s\n' "$build_number" >> "$GITHUB_OUTPUT"
 
       - name: Build universal release archive
         run: |
           make release-archive \
             BUNDLE="dist/CCMonitor.app" \
             VERSION="${{ steps.version.outputs.version }}" \
-            BUILD_NUMBER="$GITHUB_RUN_NUMBER"
+            BUILD_NUMBER="${{ steps.version.outputs.build_number }}"
 
       - name: Validate release archive
         run: |
           make validate-release \
             BUNDLE="dist/CCMonitor.app" \
             VERSION="${{ steps.version.outputs.version }}" \
-            BUILD_NUMBER="$GITHUB_RUN_NUMBER"
+            BUILD_NUMBER="${{ steps.version.outputs.build_number }}"
 
       - name: Create or reuse release tag
         env:

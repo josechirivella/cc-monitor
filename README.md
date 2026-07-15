@@ -94,7 +94,7 @@ Sources/CCMonitor/
 
 ## Releases
 
-Every push to `main` creates a GitHub Release. The workflow builds a universal macOS app, writes `1.0.<GitHub run number>` into its bundle metadata, tags the merge commit, and uploads the ZIP. GitHub automatically provides source ZIP and tarball archives for every release tag.
+Pull requests targeting `main` build and validate the universal archive on GitHub's macOS 26 runner. Every push to `main` creates the next patch GitHub Release, writes that version into the app bundle metadata, tags the merge commit, and uploads the ZIP. GitHub automatically provides source ZIP and tarball archives for every release tag.
 
 The release artifact is intentionally unsigned and does not require an Apple Developer account. It can be signed and notarized in a future release workflow if distribution requirements change.
 

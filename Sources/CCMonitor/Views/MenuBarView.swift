@@ -3,6 +3,7 @@ import SwiftUI
 /// Root content view rendered inside the MenuBarExtra popover.
 /// Leads with API-sourced authoritative percentages; falls back to setup
 /// instructions when no session key is configured.
+@MainActor
 struct MenuBarView: View {
     @Environment(UsageStore.self) private var store
 
