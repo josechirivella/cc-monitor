@@ -18,10 +18,17 @@ CCMonitor lives in your menu bar as a `⚡ 42%` indicator. Click it for a slick 
 ## Requirements
 
 - macOS 14 (Sonoma) or later
-- Swift 5.9+ toolchain (Xcode 15+ or Swift command-line tools)
 - An active Claude subscription signed in at [claude.ai](https://claude.ai)
 
-## Build & Run
+## Install a Release
+
+Download `CCMonitor-vX.Y.Z-macos-universal.zip` from the [releases page](https://github.com/runyan-co/cc-monitor/releases), extract it, and move `CCMonitor.app` to `/Applications`.
+
+The release is unsigned. macOS may warn when opening an app downloaded from GitHub. To open it, control-click `CCMonitor.app`, select **Open**, then confirm. Source builds are not affected by this download warning.
+
+## Build From Source
+
+Building from source requires a Swift 5.9+ toolchain (Xcode 15+ or Swift command-line tools).
 
 ```bash
 # Build a release binary and wrap it in CCMonitor.app
@@ -39,6 +46,14 @@ For quick development iteration:
 ```bash
 make run   # swift run (no .app bundle; the Dock icon may flash briefly)
 ```
+
+To create the same universal archive used for a release:
+
+```bash
+make release-archive VERSION=1.0.1 BUILD_NUMBER=1
+```
+
+The archive is written to `dist/CCMonitor-v1.0.1-macos-universal.zip`.
 
 ## Setup
 
@@ -76,6 +91,12 @@ Sources/CCMonitor/
 ├── Services/    # claude.ai API client, session key lookup, Keychain, log parsing, observable store
 └── Views/       # Menu bar popover, session/week cards, setup screen
 ```
+
+## Releases
+
+Every push to `main` creates a GitHub Release. The workflow builds a universal macOS app, writes `1.0.<GitHub run number>` into its bundle metadata, tags the merge commit, and uploads the ZIP. GitHub automatically provides source ZIP and tarball archives for every release tag.
+
+The release artifact is intentionally unsigned and does not require an Apple Developer account. It can be signed and notarized in a future release workflow if distribution requirements change.
 
 ## License
 
